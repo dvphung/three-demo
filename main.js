@@ -11,7 +11,6 @@ import { TWEEN } from 'three/examples/jsm/libs/tween.module.min';
 let container;
 let renderer;
 let scene;
-let house;
 let camera;
 let model;
 let run;
@@ -21,12 +20,13 @@ let planeNormal;
 let intersectionPoint;
 let plane;
 let raycaster;
-let diagonalLine = 0;
 let objectMouse = [];
 let personRun;
 let personStop;
+let tween;
+let samurai;
 
-function init() {
+async function init() {
   container = document.querySelector('#app');
 
   //create scene
@@ -64,23 +64,29 @@ function init() {
   dracoLoader.setDecoderPath( '/examples/jsm/libs/draco/' );
   loader.setDRACOLoader( dracoLoader );
 
-  loader.load('./3d/house/LowPoly_JapaneseHouse_PBR.gltf', function (gltf) {
+  loader.load('3d/house/LowPoly_JapaneseHouse_PBR.gltf', function (gltf) {
     model = gltf.scene;
     scene.add(model);
+    // gltf.scene.traverse( function( node ) {
+    //   console.log(node);
+    // } );
   })
 
-  loader.load('./3d/avatar/avata.gltf', function (gltf) {
+  loader.load('3d/avatar/avata.gltf', function (gltf) {
     mixer = new THREE.AnimationMixer(gltf.scene);
     personStop = gltf.animations[0];
     personRun = gltf.animations[1];
     mixer.clipAction(personStop).play();
     run = gltf.scene;
     scene.add(run);
-    // console.log(mxierPlay);
   })
 
   function runAvatar() {
     mixer.clipAction(personRun).play();
+  }
+
+  function stopAvatar() {
+    mixer &&  mixer.clipAction(personRun).stop();
   }
 
   // const hemiLight = new THREE.HemisphereLight( 0xffffff, 0xffffff, 0.5 );
@@ -93,23 +99,14 @@ function init() {
 
   const dirLight = new THREE.DirectionalLight( 0xffffff, 1 );
     // dirLight.position.set( -8, 12, 8 );
-    // dirLight.castShadow = true;
+    dirLight.castShadow = true;
     // dirLight.shadow.mapSize = new THREE.Vector2(1024, 1024);
-// Add directional Light to scene    
+    // Add directional Light to scene    
     scene.add( dirLight );
 
   const orbit = new OrbitControls( camera, renderer.domElement );
-  
-
-
-
-  // scene.add( sphere );
-  // scene.add(sphere2);
 
   camera.position.z = 20;
-
-  // const ambient = new THREE.AmbientLight(0x404040, 1);
-  // scene.add(ambient);
 
   // mouse click
 
@@ -136,18 +133,24 @@ function init() {
   function carPosition(e) {
     if (!run) return;
     if (objectMouse.length === 0) return;
+    console.log(objectMouse);
     const timer = Math.sqrt(Math.pow(run.position.x - objectMouse[0].point.x, 2) + Math.pow(run.position.z - objectMouse[0].point.z, 2));
+    tween && tween.stop();
     runAvatar();
     run.lookAt(objectMouse[0].point.x, 0, objectMouse[0].point.z );
     //  diagonalLine = Math.abs(Math.sqrt(Math.pow(2, Math.abs(intersectionPoint.x)) + Math.pow(2, Math.abs(intersectionPoint.z))) - Math.sqrt(Math.pow(2, Math.abs(model.position.x)) + Math.pow(2, Math.abs(model.position.z))));
-    new TWEEN.Tween(run.position).to({ x: objectMouse[0].point.x, y: 0, z: objectMouse[0].point.z }, timer * 100).start().onComplete(function() {
-      console.log('complete');
-      mixer.clipAction(personRun).stop();
+    tween = new TWEEN.Tween(run.position)
+    .to({ x: objectMouse[0].point.x, y: 0, z: objectMouse[0].point.z }, timer * 100)
+    .start()
+    .onComplete(function() {
+      stopAvatar();
     });
   }
 
   const clock = new THREE.Clock();
-  const stats = Stats()
+  // ADD FPS
+  const stats = Stats();
+  container.appendChild(stats.dom);
 
   function animate() {
     requestAnimationFrame( animate );
